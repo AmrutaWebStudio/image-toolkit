@@ -114,19 +114,22 @@
   <div class="privacy-note">
     🔒 Your photo is processed entirely on your device. Nothing is uploaded anywhere.
   </div>
-  <div class="info-box" id="cropNote" style="display: block;">
+    <div class="info-box" id="cropNote" style="display: block;">
     ℹ️ This automatically crops the <strong>center</strong> of your photo to fit the target size.
     For best results, use a photo where your face is roughly centered. Manual crop control is coming soon.
+  </div>
+  <div class="info-box" style="display: block; background: #fff6e9; border-color: #f0dfc0; color: #a15c04;">
+    ⚠️ PAN, Aadhaar and Voter ID photo requirements can vary slightly by form or portal.
+    Please double-check against the current official form before submitting for an application.
   </div>
 
   <p>Select a photo:</p>
   <input type="file" id="fileInput" accept="image/*">
 
   <h3>Choose a size</h3>
-    <select id="presetSelect">
-    <option value="600x600">US Passport / Visa Photo — 2×2 in (600×600 px)</option>
-    <option value="413x531">UK / Schengen / EU Visa Photo — 35×45mm (413×531 px)</option>
-    <option value="295x413">PAN Card Photo (India) — 25×35mm (295×413 px)</option>
+      <select id="presetSelect">
+    <option value="413x531">Indian Passport / Visa Photo — 35×45mm (413×531 px)</option>
+    <option value="295x413">Stamp Size (PAN / Aadhaar / Voter ID) — 25×35mm (295×413 px)</option>
     <option value="custom">Custom size</option>
   </select>
 
