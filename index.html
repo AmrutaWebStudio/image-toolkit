@@ -4,12 +4,22 @@
   <title>Amruta Image Toolkit</title>
 </head>
 <body>
-  <h1>Image Toolkit — Compress &amp; Resize</h1>
+  <h1>Image Toolkit — Compress, Resize &amp; Convert</h1>
 
   <p>Select an image:</p>
   <input type="file" id="fileInput" accept="image/*">
 
   <br><br>
+  <h3>Format</h3>
+  <label for="formatSelect">Output format: </label>
+  <select id="formatSelect">
+    <option value="image/jpeg">JPEG</option>
+    <option value="image/png">PNG</option>
+    <option value="image/webp">WebP</option>
+  </select>
+  <p id="formatNote" style="font-style: italic;"></p>
+
+  <br>
   <h3>Resize</h3>
   <label for="widthInput">Width (px): </label>
   <input type="number" id="widthInput" min="1">
@@ -28,14 +38,16 @@
 
   <br>
   <h3>Compress</h3>
-  <label for="quality">Manual quality: </label>
-  <input type="range" id="quality" min="10" max="100" value="80">
-  <span id="qualityValue">80</span>%
+  <div id="compressControls">
+    <label for="quality">Manual quality: </label>
+    <input type="range" id="quality" min="10" max="100" value="80">
+    <span id="qualityValue">80</span>%
 
-  <br><br>
-  <label for="targetSize">Or target a file size (KB): </label>
-  <input type="number" id="targetSize" placeholder="e.g. 200" min="1">
-  <button id="targetButton">Compress to this size</button>
+    <br><br>
+    <label for="targetSize">Or target a file size (KB): </label>
+    <input type="number" id="targetSize" placeholder="e.g. 200" min="1">
+    <button id="targetButton">Compress to this size</button>
+  </div>
 
   <br><br>
   <p id="originalSize"></p>
@@ -43,7 +55,8 @@
   <p id="statusText"></p>
 
   <br>
-  <img id="preview" style="max-width: 400px; border: 1px solid #ccc; display: none;">
+  <img id="preview" style="max-width: 400px; border: 1px solid #ccc; display: none; background:
+    repeating-conic-gradient(#ddd 0% 25%, white 0% 50%) 50% / 20px 20px;">
 
   <br><br>
   <a id="downloadLink" style="display: none;">
@@ -54,6 +67,10 @@
 
   <script>
     const fileInput = document.getElementById('fileInput');
+    const formatSelect = document.getElementById('formatSelect');
+    const formatNote = document.getElementById('formatNote');
+    const compressControls = document.getElementById('compressControls');
+
     const widthInput = document.getElementById('widthInput');
     const heightInput = document.getElementById('heightInput');
     const lockAspect = document.getElementById('lockAspect');
@@ -84,12 +101,38 @@
       return (bytes / 1024).toFixed(1) + ' KB';
     }
 
+    function extensionFor(mimeType) {
+      if (mimeType === 'image/png') return 'png';
+      if (mimeType === 'image/webp') return 'webp';
+      return 'jpg';
+    }
+
+    function updateFormatUI() {
+      const isPng = formatSelect.value === 'image/png';
+      compressControls.style.display = isPng ? 'none' : 'block';
+
+      if (isPng) {
+        formatNote.textContent = 'PNG is lossless — there is no quality slider, and transparency (if the image has any) is preserved.';
+      } else if (formatSelect.value === 'image/jpeg') {
+        formatNote.textContent = 'Note: JPEG does not support transparency — any transparent areas will be filled in with white.';
+      } else {
+        formatNote.textContent = 'WebP supports both quality adjustment and transparency.';
+      }
+    }
+
     function compressAtQuality(quality) {
       return new Promise((resolve) => {
         canvas.width = workingWidth;
         canvas.height = workingHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(currentImage, 0, 0, workingWidth, workingHeight);
-        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+
+        const mimeType = formatSelect.value;
+        if (mimeType === 'image/png') {
+          canvas.toBlob((blob) => resolve(blob), mimeType);
+        } else {
+          canvas.toBlob((blob) => resolve(blob), mimeType, quality);
+        }
       });
     }
 
@@ -97,10 +140,14 @@
       const url = URL.createObjectURL(blob);
       preview.src = url;
       preview.style.display = 'block';
+
+      const isPng = formatSelect.value === 'image/png';
+      const qualityText = isPng ? '' : (', quality used: ' + Math.round(qualityUsed * 100) + '%)');
       compressedSizeText.textContent = 'Result size: ' + formatBytes(blob.size) +
-        ' (' + workingWidth + '×' + workingHeight + 'px, quality used: ' + Math.round(qualityUsed * 100) + '%)';
+        ' (' + workingWidth + '×' + workingHeight + 'px' + (isPng ? ')' : qualityText);
+
       downloadLink.href = url;
-      downloadLink.download = 'result-image.jpg';
+      downloadLink.download = 'result-image.' + extensionFor(formatSelect.value);
       downloadLink.style.display = 'inline-block';
     }
 
@@ -220,6 +267,13 @@
     });
 
     targetButton.addEventListener('click', compressToTargetSize);
+
+    formatSelect.addEventListener('change', function() {
+      updateFormatUI();
+      compressAndShow();
+    });
+
+    updateFormatUI();
   </script>
 </body>
 </html>
