@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Passport & ID Photo — Amruta Image Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --dark: #1A252B;
+      --green: #04A168;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      color: var(--dark);
+      background: #ffffff;
+    }
+    a.back-link {
+      display: inline-block;
+      color: #55606a;
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    a.back-link:hover { color: var(--green); }
+    h1 { font-size: 24px; margin: 8px 0 4px; }
+    .tagline {
+      color: #55606a;
+      font-size: 15px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .privacy-note {
+      background: #f0faf5;
+      border: 1px solid #cfeee0;
+      color: #0c5a3b;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 28px;
+    }
+    h3 {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #55606a;
+      margin: 28px 0 10px;
+    }
+    select, input[type="number"] {
+      padding: 6px 8px;
+      border: 1px solid #d5dade;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      background: var(--green);
+      color: white;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    .dimension-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 13px; color: #55606a; }
+    .field input { width: 140px; }
+    @media (max-width: 420px) {
+      .field { width: 100%; }
+      .field input { width: 100%; }
+    }
+    .info-box {
+      font-size: 14px;
+      color: #0c4a8a;
+      background: #eaf3fc;
+      border: 1px solid #cfe3f7;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 14px 0;
+      display: none;
+    }
+    .preview-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #55606a;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin: 20px 0 8px;
+      display: none;
+    }
+    img#preview {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 1px solid #e2e5e7;
+    }
+  </style>
+</head>
+<body>
+
+  <a class="back-link" href="index.html">← Back to all tools</a>
+
+  <h1>Passport &amp; ID Photo</h1>
+  <p class="tagline">
+    Crop and resize your photo to common passport, visa and ID sizes.
+  </p>
+  <div class="privacy-note">
+    🔒 Your photo is processed entirely on your device. Nothing is uploaded anywhere.
+  </div>
+  <div class="info-box" id="cropNote" style="display: block;">
+    ℹ️ This automatically crops the <strong>center</strong> of your photo to fit the target size.
+    For best results, use a photo where your face is roughly centered. Manual crop control is coming soon.
+  </div>
+
+  <p>Select a photo:</p>
+  <input type="file" id="fileInput" accept="image/*">
+
+  <h3>Choose a size</h3>
+  <select id="presetSelect">
+    <option value="600x600">Passport / Visa Photo — 2×2 in (600×600 px)</option>
+    <option value="413x531">UK / Schengen Visa Photo — 35×45mm (413×531 px)</option>
+    <option value="295x413">PAN Card Photo (India) — 25×35mm (295×413 px)</option>
+    <option value="custom">Custom size</option>
+  </select>
+
+  <div class="dimension-row" id="customFields" style="display: none;">
+    <div class="field">
+      <label for="customWidth">Width (px)</label>
+      <input type="number" id="customWidth" min="1" value="600">
+    </div>
+    <div class="field">
+      <label for="customHeight">Height (px)</label>
+      <input type="number" id="customHeight" min="1" value="600">
+    </div>
+  </div>
+
+  <br>
+  <button id="applyButton">Apply</button>
+
+  <p class="preview-label" id="previewLabel">👀 Preview — here's how it looks</p>
+  <img id="preview" style="display: none;">
+
+  <br><br>
+  <a id="downloadLink" style="display: none;">
+    <button>Download result</button>
+  </a>
+
+  <canvas id="canvas" style="display: none;"></canvas>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const presetSelect = document.getElementById('presetSelect');
+    const customFields = document.getElementById('customFields');
+    const customWidth = document.getElementById('customWidth');
+    const customHeight = document.getElementById('customHeight');
+    const applyButton = document.getElementById('applyButton');
+    const previewLabel = document.getElementById('previewLabel');
+    const preview = document.getElementById('preview');
+    const downloadLink = document.getElementById('downloadLink');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let currentImage = null;
+
+    presetSelect.addEventListener('change', function() {
+      customFields.style.display = presetSelect.value === 'custom' ? 'flex' : 'none';
+    });
+
+    fileInput.addEventListener('change', function() {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const img = new Image();
+      img.onload = function() {
+        currentImage = img;
+      };
+      img.src = URL.createObjectURL(file);
+    });
+
+    function getTargetSize() {
+      if (presetSelect.value === 'custom') {
+        return {
+          width: parseInt(customWidth.value) || 600,
+          height: parseInt(customHeight.value) || 600
+        };
+      }
+      const [w, h] = presetSelect.value.split('x').map(Number);
+      return { width: w, height: h };
+    }
+
+    applyButton.addEventListener('click', function() {
+      if (!currentImage) {
+        alert('Please select a photo first.');
+        return;
+      }
+
+      const target = getTargetSize();
+      const targetAR = target.width / target.height;
+      const sw = currentImage.width;
+      const sh = currentImage.height;
+      const sourceAR = sw / sh;
+
+      let cropWidth, cropHeight, cropX, cropY;
+
+      if (sourceAR > targetAR) {
+        // source is relatively wider than target — crop the sides
+        cropHeight = sh;
+        cropWidth = sh * targetAR;
+        cropX = (sw - cropWidth) / 2;
+        cropY = 0;
+      } else {
+        // source is relatively taller than target — crop top/bottom
+        cropWidth = sw;
+        cropHeight = sw / targetAR;
+        cropX = 0;
+        cropY = (sh - cropHeight) / 2;
+      }
+
+      canvas.width = target.width;
+      canvas.height = target.height;
+      ctx.drawImage(
+        currentImage,
+        cropX, cropY, cropWidth, cropHeight,
+        0, 0, target.width, target.height
+      );
+
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        preview.src = url;
+        preview.style.display = 'block';
+        previewLabel.style.display = 'block';
+        downloadLink.href = url;
+        downloadLink.download = 'id-photo.jpg';
+        downloadLink.style.display = 'inline-block';
+      }, 'image/jpeg', 0.92);
+    });
+  </script>
+</body>
+</html>
