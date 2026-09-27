@@ -4,6 +4,26 @@
   <title>Amruta Image Toolkit</title>
 </head>
 <body>
-  <h1>Hello World — Image Toolkit is live!</h1>
+  <h1>Image Toolkit</h1>
+
+  <p>Select an image to preview it below:</p>
+  <input type="file" id="fileInput" accept="image/*">
+
+  <br><br>
+  <img id="preview" style="max-width: 400px; border: 1px solid #ccc; display: none;">
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+
+    fileInput.addEventListener('change', function() {
+      const file = fileInput.files[0];
+      if (file) {
+        const imageURL = URL.createObjectURL(file);
+        preview.src = imageURL;
+        preview.style.display = 'block';
+      }
+    });
+  </script>
 </body>
 </html>
