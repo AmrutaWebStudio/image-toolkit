@@ -125,7 +125,7 @@
   <h3>Choose a size</h3>
   <select id="presetSelect">
     <option value="600x600">Passport / Visa Photo — 2×2 in (600×600 px)</option>
-    <option value="413x531">UK / Schengen Visa Photo — 35×45mm (413×531 px)</option>
+    <option value="413x531"> Visa Photo — 35×45mm (413×531 px)</option>
     <option value="295x413">PAN Card Photo (India) — 25×35mm (295×413 px)</option>
     <option value="custom">Custom size</option>
   </select>
@@ -220,6 +220,18 @@
         cropHeight = sw / targetAR;
         cropX = 0;
         cropY = (sh - cropHeight) / 2;
+      }
+
+            // Sanity check: if the crop region is a tiny sliver of the original,
+      // the result would be a stretched, meaningless strip — block it instead.
+      const minCropDimension = Math.min(cropWidth, cropHeight);
+      if (minCropDimension < 30) {
+        alert(
+          'This size (' + target.width + '×' + target.height + 'px) is too extreme a shape for center-cropping this photo — ' +
+          'it would need to throw away almost the entire image. Try a less extreme custom size, ' +
+          'or use the Compress/Resize tool instead if you just want to change dimensions without cropping.'
+        );
+        return;
       }
 
       canvas.width = target.width;
