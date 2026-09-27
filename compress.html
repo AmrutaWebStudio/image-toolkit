@@ -52,6 +52,28 @@
       margin: 28px 0 10px;
     }
     input[type="file"] { font-size: 14px; }
+        .dimension-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field label {
+      font-size: 13px;
+      color: #55606a;
+    }
+    .field input {
+      width: 140px;
+    }
+    @media (max-width: 420px) {
+      .field { width: 100%; }
+      .field input { width: 100%; }
+    }
     input[type="number"], select {
       padding: 6px 8px;
       border: 1px solid #d5dade;
@@ -135,13 +157,18 @@
   </select>
   <p id="formatNote"></p>
 
-  <h3>Resize</h3>
-  <label for="widthInput">Width (px)</label><br>
-  <input type="number" id="widthInput" min="1">
-  &nbsp;&nbsp;
-  <label for="heightInput">Height (px)</label>
-  <input type="number" id="heightInput" min="1">
-  <br><br>
+    <h3>Resize</h3>
+  <div class="dimension-row">
+    <div class="field">
+      <label for="widthInput">Width (px)</label>
+      <input type="number" id="widthInput" min="1">
+    </div>
+    <div class="field">
+      <label for="heightInput">Height (px)</label>
+      <input type="number" id="heightInput" min="1">
+    </div>
+  </div>
+  <br>
   <label>
     <input type="checkbox" id="lockAspect" checked>
     Lock aspect ratio
