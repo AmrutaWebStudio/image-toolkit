@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Compress, Resize & Convert — Amruta Image Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --dark: #1A252B;
+      --green: #04A168;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      color: var(--dark);
+      background: #ffffff;
+    }
+    a.back-link {
+      display: inline-block;
+      color: #55606a;
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    a.back-link:hover { color: var(--green); }
+    h1 {
+      font-size: 24px;
+      margin: 8px 0 4px;
+    }
+    .tagline {
+      color: #55606a;
+      font-size: 15px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .privacy-note {
+      background: #f0faf5;
+      border: 1px solid #cfeee0;
+      color: #0c5a3b;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 28px;
+    }
+    h3 {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #55606a;
+      margin: 28px 0 10px;
+    }
+    input[type="file"] { font-size: 14px; }
+    input[type="number"], select {
+      padding: 6px 8px;
+      border: 1px solid #d5dade;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      background: var(--green);
+      color: white;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    #resetSizeButton {
+      background: #eef0f1;
+      color: var(--dark);
+    }
+    .info-box {
+      font-size: 14px;
+      color: #0c4a8a;
+      background: #eaf3fc;
+      border: 1px solid #cfe3f7;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 10px 0;
+      display: none;
+    }
+    .warning {
+      font-size: 13px;
+      color: #a15c04;
+      background: #fff6e9;
+      border: 1px solid #f0dfc0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      display: none;
+      margin: 10px 0;
+    }
+    #formatNote {
+      font-size: 13px;
+      color: #55606a;
+    }
+    .preview-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #55606a;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin: 20px 0 8px;
+      display: none;
+    }
+    img#preview {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 1px solid #e2e5e7;
+    }
+  </style>
+</head>
+<body>
+
+  <a class="back-link" href="index.html">← Back to all tools</a>
+
+  <h1>Compress, Resize &amp; Convert</h1>
+  <p class="tagline">
+    Shrink file size, change dimensions, and switch formats — instantly, right in your browser.
+  </p>
+  <div class="privacy-note">
+    🔒 Your images are processed entirely on your device. Nothing is ever uploaded to a server.
+  </div>
+
+  <p>Select an image:</p>
+  <input type="file" id="fileInput" accept="image/*">
+
+  <h3>Format</h3>
+  <select id="formatSelect">
+    <option value="image/jpeg">JPEG</option>
+    <option value="image/png">PNG</option>
+    <option value="image/webp">WebP</option>
+  </select>
+  <p id="formatNote"></p>
+
+  <h3>Resize</h3>
+  <label for="widthInput">Width (px)</label><br>
+  <input type="number" id="widthInput" min="1">
+  &nbsp;&nbsp;
+  <label for="heightInput">Height (px)</label>
+  <input type="number" id="heightInput" min="1">
+  <br><br>
+  <label>
+    <input type="checkbox" id="lockAspect" checked>
+    Lock aspect ratio
+  </label>
+  <br><br>
+  <button id="applyResizeButton">Apply resize</button>
+  <button id="resetSizeButton">Reset to original size</button>
+  <p class="status" id="resizeStatus"></p>
+
+  <h3>Compress</h3>
+  <div id="compressControls">
+    <label for="quality">Manual quality: </label>
+    <input type="range" id="quality" min="10" max="100" value="80">
+    <span id="qualityValue">80</span>%
+    <br><br>
+    <label for="targetSize">Or target a file size (KB): </label>
+    <input type="number" id="targetSize" placeholder="e.g. 200" min="1">
+    <button id="targetButton">Compress to this size</button>
+  </div>
+
+  <br>
+  <p class="status" id="originalSize"></p>
+  <p class="status" id="compressedSize"></p>
+  <div class="info-box" id="infoBox"></div>
+  <div class="warning" id="warningText"></div>
+
+  <p class="preview-label" id="previewLabel">👀 Preview — here's how it looks</p>
+  <img id="preview" style="display: none; background:
+    repeating-conic-gradient(#ddd 0% 25%, white 0% 50%) 50% / 20px 20px;">
+
+  <br><br>
+  <a id="downloadLink" style="display: none;">
+    <button>Download result</button>
+  </a>
+
+  <canvas id="canvas" style="display: none;"></canvas>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const formatSelect = document.getElementById('formatSelect');
+    const formatNote = document.getElementById('formatNote');
+    const compressControls = document.getElementById('compressControls');
+
+    const widthInput = document.getElementById('widthInput');
+    const heightInput = document.getElementById('heightInput');
+    const lockAspect = document.getElementById('lockAspect');
+    const applyResizeButton = document.getElementById('applyResizeButton');
+    const resetSizeButton = document.getElementById('resetSizeButton');
+    const resizeStatus = document.getElementById('resizeStatus');
+
+    const qualitySlider = document.getElementById('quality');
+    const qualityValue = document.getElementById('qualityValue');
+    const targetSizeInput = document.getElementById('targetSize');
+    const targetButton = document.getElementById('targetButton');
+    const previewLabel = document.getElementById('previewLabel');
+    const preview = document.getElementById('preview');
+    const originalSizeText = document.getElementById('originalSize');
+    const compressedSizeText = document.getElementById('compressedSize');
+    const infoBox = document.getElementById('infoBox');
+    const warningText = document.getElementById('warningText');
+    const downloadLink = document.getElementById('downloadLink');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let currentImage = null;
+    let originalFileSize = 0;
+    let originalWidth = 0;
+    let originalHeight = 0;
+    let workingWidth = 0;
+    let workingHeight = 0;
+
+    function formatBytes(bytes) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    }
+
+    function extensionFor(mimeType) {
+      if (mimeType === 'image/png') return 'png';
+      if (mimeType === 'image/webp') return 'webp';
+      return 'jpg';
+    }
+
+    function updateFormatUI() {
+      const isPng = formatSelect.value === 'image/png';
+      compressControls.style.display = isPng ? 'none' : 'block';
+
+      if (isPng) {
+        formatNote.textContent = 'PNG is lossless — there is no quality slider, and transparency (if the image has any) is preserved.';
+      } else if (formatSelect.value === 'image/jpeg') {
+        formatNote.textContent = 'Note: JPEG does not support transparency — any transparent areas will be filled in with white.';
+      } else {
+        formatNote.textContent = 'WebP supports both quality adjustment and transparency.';
+      }
+    }
+
+    function compressAtQuality(quality) {
+      return new Promise((resolve) => {
+        canvas.width = workingWidth;
+        canvas.height = workingHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(currentImage, 0, 0, workingWidth, workingHeight);
+
+        const mimeType = formatSelect.value;
+        if (mimeType === 'image/png') {
+          canvas.toBlob((blob) => resolve(blob), mimeType);
+        } else {
+          canvas.toBlob((blob) => resolve(blob), mimeType, quality);
+        }
+      });
+    }
+
+    function showResult(blob, qualityUsed, checkWarning) {
+      const url = URL.createObjectURL(blob);
+      preview.src = url;
+      preview.style.display = 'block';
+      previewLabel.style.display = 'block';
+
+      const isPng = formatSelect.value === 'image/png';
+      const qualityText = isPng ? '' : (', quality used: ' + Math.round(qualityUsed * 100) + '%)');
+      compressedSizeText.textContent = 'Result size: ' + formatBytes(blob.size) +
+        ' (' + workingWidth + '×' + workingHeight + 'px' + (isPng ? ')' : qualityText);
+
+      downloadLink.href = url;
+      downloadLink.download = 'result-image.' + extensionFor(formatSelect.value);
+      downloadLink.style.display = 'inline-block';
+
+      if (checkWarning && blob.size >= originalFileSize) {
+        warningText.textContent = '⚠️ Result is larger than your original (' + formatBytes(originalFileSize) +
+          ') — try lowering quality or reducing dimensions.';
+        warningText.style.display = 'block';
+      } else {
+        warningText.style.display = 'none';
+      }
+    }
+
+    async function compressAndShow() {
+      if (!currentImage) return;
+      infoBox.style.display = 'none';
+      const quality = qualitySlider.value / 100;
+      const blob = await compressAtQuality(quality);
+      showResult(blob, quality, true);
+    }
+
+    async function compressToTargetSize() {
+      if (!currentImage) return;
+      const targetKB = parseFloat(targetSizeInput.value);
+      infoBox.style.display = 'none';
+      if (!targetKB || targetKB <= 0) {
+        infoBox.textContent = 'Please enter a valid target size in KB.';
+        infoBox.style.display = 'block';
+        return;
+      }
+      const targetBytes = targetKB * 1024;
+
+      let low = 0.05;
+      let high = 1.0;
+      let bestBlob = null;
+      let bestQuality = low;
+
+      for (let i = 0; i < 8; i++) {
+        const mid = (low + high) / 2;
+        const blob = await compressAtQuality(mid);
+        if (blob.size <= targetBytes) {
+          bestBlob = blob;
+          bestQuality = mid;
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+
+      if (bestBlob && bestBlob.size < originalFileSize) {
+        showResult(bestBlob, bestQuality, false);
+        infoBox.textContent = '✅ Done — got it under ' + targetKB + ' KB.';
+        infoBox.style.display = 'block';
+      } else if (bestBlob) {
+        infoBox.textContent = 'ℹ️ Your original file (' + formatBytes(originalFileSize) +
+          ') is already smaller than anything we can re-compress it to — no need to compress this one.';
+        infoBox.style.display = 'block';
+      } else {
+        const blob = await compressAtQuality(0.05);
+        showResult(blob, 0.05, false);
+        infoBox.textContent = 'ℹ️ Could not reach ' + targetKB +
+          ' KB even at lowest quality. This is the smallest possible result — try reducing the image dimensions instead.';
+        infoBox.style.display = 'block';
+      }
+    }
+
+    function applyResize() {
+      const newWidth = parseInt(widthInput.value);
+      const newHeight = parseInt(heightInput.value);
+      if (!newWidth || !newHeight || newWidth <= 0 || newHeight <= 0) {
+        resizeStatus.textContent = 'Please enter valid width and height values.';
+        return;
+      }
+      workingWidth = newWidth;
+      workingHeight = newHeight;
+      resizeStatus.textContent = 'Resized to ' + workingWidth + '×' + workingHeight + 'px.';
+      compressAndShow();
+    }
+
+    function resetSize() {
+      workingWidth = originalWidth;
+      workingHeight = originalHeight;
+      widthInput.value = originalWidth;
+      heightInput.value = originalHeight;
+      resizeStatus.textContent = 'Reset to original size (' + originalWidth + '×' + originalHeight + 'px).';
+      compressAndShow();
+    }
+
+    fileInput.addEventListener('change', function() {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      originalFileSize = file.size;
+      originalSizeText.textContent = 'Original size: ' + formatBytes(file.size);
+
+      const img = new Image();
+      img.onload = function() {
+        currentImage = img;
+        originalWidth = img.width;
+        originalHeight = img.height;
+        workingWidth = img.width;
+        workingHeight = img.height;
+        widthInput.value = img.width;
+        heightInput.value = img.height;
+        resizeStatus.textContent = '';
+        compressAndShow();
+      };
+      img.src = URL.createObjectURL(file);
+    });
+
+    widthInput.addEventListener('input', function() {
+      if (lockAspect.checked && originalWidth && originalHeight) {
+        const ratio = originalHeight / originalWidth;
+        heightInput.value = Math.round(widthInput.value * ratio);
+      }
+    });
+
+    heightInput.addEventListener('input', function() {
+      if (lockAspect.checked && originalWidth && originalHeight) {
+        const ratio = originalWidth / originalHeight;
+        widthInput.value = Math.round(heightInput.value * ratio);
+      }
+    });
+
+    applyResizeButton.addEventListener('click', applyResize);
+    resetSizeButton.addEventListener('click', resetSize);
+
+    qualitySlider.addEventListener('input', function() {
+      qualityValue.textContent = qualitySlider.value;
+      compressAndShow();
+    });
+
+    targetButton.addEventListener('click', compressToTargetSize);
+
+    formatSelect.addEventListener('change', function() {
+      updateFormatUI();
+      compressAndShow();
+    });
+
+    updateFormatUI();
+  </script>
+</body>
+</html>
