@@ -10,13 +10,19 @@
   <input type="file" id="fileInput" accept="image/*">
 
   <br><br>
-  <label for="quality">Quality: </label>
+  <label for="quality">Manual quality: </label>
   <input type="range" id="quality" min="10" max="100" value="80">
   <span id="qualityValue">80</span>%
 
   <br><br>
+  <label for="targetSize">Or target a file size (KB): </label>
+  <input type="number" id="targetSize" placeholder="e.g. 200" min="1">
+  <button id="targetButton">Compress to this size</button>
+
+  <br><br>
   <p id="originalSize"></p>
   <p id="compressedSize"></p>
+  <p id="statusText"></p>
 
   <br>
   <img id="preview" style="max-width: 400px; border: 1px solid #ccc; display: none;">
@@ -32,9 +38,12 @@
     const fileInput = document.getElementById('fileInput');
     const qualitySlider = document.getElementById('quality');
     const qualityValue = document.getElementById('qualityValue');
+    const targetSizeInput = document.getElementById('targetSize');
+    const targetButton = document.getElementById('targetButton');
     const preview = document.getElementById('preview');
     const originalSizeText = document.getElementById('originalSize');
     const compressedSizeText = document.getElementById('compressedSize');
+    const statusText = document.getElementById('statusText');
     const downloadLink = document.getElementById('downloadLink');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -45,26 +54,75 @@
       return (bytes / 1024).toFixed(1) + ' KB';
     }
 
-    function compressAndShow() {
+    // Returns a Promise so we can "wait" for the compressed result
+    function compressAtQuality(quality) {
+      return new Promise((resolve) => {
+        canvas.width = currentImage.width;
+        canvas.height = currentImage.height;
+        ctx.drawImage(currentImage, 0, 0);
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+      });
+    }
+
+    function showResult(blob, qualityUsed) {
+      const url = URL.createObjectURL(blob);
+      preview.src = url;
+      preview.style.display = 'block';
+      compressedSizeText.textContent = 'Compressed size: ' + formatBytes(blob.size) +
+        ' (quality used: ' + Math.round(qualityUsed * 100) + '%)';
+      downloadLink.href = url;
+      downloadLink.download = 'compressed-image.jpg';
+      downloadLink.style.display = 'inline-block';
+    }
+
+    async function compressAndShow() {
       if (!currentImage) return;
-
-      canvas.width = currentImage.width;
-      canvas.height = currentImage.height;
-      ctx.drawImage(currentImage, 0, 0);
-
       const quality = qualitySlider.value / 100;
+      const blob = await compressAtQuality(quality);
+      showResult(blob, quality);
+      statusText.textContent = '';
+    }
 
-      canvas.toBlob(function(blob) {
-        const compressedURL = URL.createObjectURL(blob);
-        preview.src = compressedURL;
-        preview.style.display = 'block';
+    async function compressToTargetSize() {
+      if (!currentImage) return;
+      const targetKB = parseFloat(targetSizeInput.value);
+      if (!targetKB || targetKB <= 0) {
+        statusText.textContent = 'Please enter a valid target size in KB.';
+        return;
+      }
+      const targetBytes = targetKB * 1024;
 
-        compressedSizeText.textContent = 'Compressed size: ' + formatBytes(blob.size);
+      statusText.textContent = 'Searching for the best quality...';
 
-        downloadLink.href = compressedURL;
-        downloadLink.download = 'compressed-image.jpg';
-        downloadLink.style.display = 'inline-block';
-      }, 'image/jpeg', quality);
+      let low = 0.05;
+      let high = 1.0;
+      let bestBlob = null;
+      let bestQuality = low;
+
+      // Try up to 8 times, narrowing in on the right quality level
+      for (let i = 0; i < 8; i++) {
+        const mid = (low + high) / 2;
+        const blob = await compressAtQuality(mid);
+
+        if (blob.size <= targetBytes) {
+          bestBlob = blob;
+          bestQuality = mid;
+          low = mid; // try for slightly higher quality next time
+        } else {
+          high = mid; // too big, need lower quality
+        }
+      }
+
+      if (bestBlob) {
+        showResult(bestBlob, bestQuality);
+        statusText.textContent = 'Done — got it under ' + targetKB + ' KB.';
+      } else {
+        // Couldn't get under target even at lowest quality
+        const blob = await compressAtQuality(0.05);
+        showResult(blob, 0.05);
+        statusText.textContent = 'Could not reach ' + targetKB +
+          ' KB even at lowest quality. This is the smallest possible result — try reducing the image dimensions instead.';
+      }
     }
 
     fileInput.addEventListener('change', function() {
@@ -85,6 +143,8 @@
       qualityValue.textContent = qualitySlider.value;
       compressAndShow();
     });
+
+    targetButton.addEventListener('click', compressToTargetSize);
   </script>
 </body>
 </html>
