@@ -1,30 +1,137 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Amruta Image Toolkit</title>
+  <title>Amruta Image Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --dark: #1A252B;
+      --green: #04A168;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      color: var(--dark);
+      background: #ffffff;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    header img { width: 32px; height: 32px; }
+    header span {
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: 0.3px;
+      color: var(--dark);
+    }
+    h1 {
+      font-size: 26px;
+      margin: 18px 0 4px;
+    }
+    .tagline {
+      color: #55606a;
+      font-size: 15px;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+    .privacy-note {
+      background: #f0faf5;
+      border: 1px solid #cfeee0;
+      color: #0c5a3b;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 28px;
+    }
+    h3 {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #55606a;
+      margin: 28px 0 10px;
+    }
+    input[type="file"] { font-size: 14px; }
+    input[type="number"], select {
+      padding: 6px 8px;
+      border: 1px solid #d5dade;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      background: var(--green);
+      color: white;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    #resetSizeButton {
+      background: #eef0f1;
+      color: var(--dark);
+    }
+    .status {
+      font-size: 14px;
+      color: #55606a;
+    }
+    .warning {
+      font-size: 13px;
+      color: #a15c04;
+      background: #fff6e9;
+      border: 1px solid #f0dfc0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      display: none;
+    }
+    #formatNote {
+      font-size: 13px;
+      color: #55606a;
+    }
+    img#preview {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 1px solid #e2e5e7;
+    }
+  </style>
 </head>
 <body>
-  <h1>Image Toolkit — Compress, Resize &amp; Convert</h1>
+
+  <header>
+    <img src="Logo_2.png" alt="Amruta Web Studio logo">
+    <span>AMRUTA WEB STUDIO</span>
+  </header>
+
+  <h1>Image Tools</h1>
+  <p class="tagline">
+    Free tools to compress, resize and convert your images — instantly, right in your browser.
+  </p>
+  <div class="privacy-note">
+    🔒 Your images are processed entirely on your device. Nothing is ever uploaded to a server.
+  </div>
 
   <p>Select an image:</p>
   <input type="file" id="fileInput" accept="image/*">
 
-  <br><br>
   <h3>Format</h3>
-  <label for="formatSelect">Output format: </label>
   <select id="formatSelect">
     <option value="image/jpeg">JPEG</option>
     <option value="image/png">PNG</option>
     <option value="image/webp">WebP</option>
   </select>
-  <p id="formatNote" style="font-style: italic;"></p>
+  <p id="formatNote"></p>
 
-  <br>
   <h3>Resize</h3>
-  <label for="widthInput">Width (px): </label>
+  <label for="widthInput">Width (px)</label><br>
   <input type="number" id="widthInput" min="1">
   &nbsp;&nbsp;
-  <label for="heightInput">Height (px): </label>
+  <label for="heightInput">Height (px)</label><br style="display:none">
   <input type="number" id="heightInput" min="1">
   <br><br>
   <label>
@@ -34,28 +141,27 @@
   <br><br>
   <button id="applyResizeButton">Apply resize</button>
   <button id="resetSizeButton">Reset to original size</button>
-  <p id="resizeStatus"></p>
+  <p class="status" id="resizeStatus"></p>
 
-  <br>
   <h3>Compress</h3>
   <div id="compressControls">
     <label for="quality">Manual quality: </label>
     <input type="range" id="quality" min="10" max="100" value="80">
     <span id="qualityValue">80</span>%
-
     <br><br>
     <label for="targetSize">Or target a file size (KB): </label>
     <input type="number" id="targetSize" placeholder="e.g. 200" min="1">
     <button id="targetButton">Compress to this size</button>
   </div>
 
-  <br><br>
-  <p id="originalSize"></p>
-  <p id="compressedSize"></p>
-  <p id="statusText"></p>
+  <br>
+  <p class="status" id="originalSize"></p>
+  <p class="status" id="compressedSize"></p>
+  <p class="status" id="statusText"></p>
+  <p class="warning" id="warningText"></p>
 
   <br>
-  <img id="preview" style="max-width: 400px; border: 1px solid #ccc; display: none; background:
+  <img id="preview" style="display: none; background:
     repeating-conic-gradient(#ddd 0% 25%, white 0% 50%) 50% / 20px 20px;">
 
   <br><br>
@@ -86,6 +192,7 @@
     const originalSizeText = document.getElementById('originalSize');
     const compressedSizeText = document.getElementById('compressedSize');
     const statusText = document.getElementById('statusText');
+    const warningText = document.getElementById('warningText');
     const downloadLink = document.getElementById('downloadLink');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -136,7 +243,7 @@
       });
     }
 
-    function showResult(blob, qualityUsed) {
+    function showResult(blob, qualityUsed, checkWarning) {
       const url = URL.createObjectURL(blob);
       preview.src = url;
       preview.style.display = 'block';
@@ -149,13 +256,21 @@
       downloadLink.href = url;
       downloadLink.download = 'result-image.' + extensionFor(formatSelect.value);
       downloadLink.style.display = 'inline-block';
+
+      if (checkWarning && blob.size >= originalFileSize) {
+        warningText.textContent = '⚠️ Result is larger than your original (' + formatBytes(originalFileSize) +
+          ') — try lowering quality or reducing dimensions.';
+        warningText.style.display = 'block';
+      } else {
+        warningText.style.display = 'none';
+      }
     }
 
     async function compressAndShow() {
       if (!currentImage) return;
       const quality = qualitySlider.value / 100;
       const blob = await compressAtQuality(quality);
-      showResult(blob, quality);
+      showResult(blob, quality, true);
       statusText.textContent = '';
     }
 
@@ -187,14 +302,14 @@
       }
 
       if (bestBlob && bestBlob.size < originalFileSize) {
-        showResult(bestBlob, bestQuality);
+        showResult(bestBlob, bestQuality, false);
         statusText.textContent = 'Done — got it under ' + targetKB + ' KB.';
       } else if (bestBlob) {
         statusText.textContent = 'Your original file (' + formatBytes(originalFileSize) +
           ') is already smaller than anything we can re-compress it to — no need to compress this one.';
       } else {
         const blob = await compressAtQuality(0.05);
-        showResult(blob, 0.05);
+        showResult(blob, 0.05, false);
         statusText.textContent = 'Could not reach ' + targetKB +
           ' KB even at lowest quality. This is the smallest possible result — try reducing the image dimensions instead.';
       }
