@@ -77,9 +77,15 @@
       background: #eef0f1;
       color: var(--dark);
     }
-    .status {
+    .info-box {
       font-size: 14px;
-      color: #55606a;
+      color: #0c4a8a;
+      background: #eaf3fc;
+      border: 1px solid #cfe3f7;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 10px 0;
+      display: none;
     }
     .warning {
       font-size: 13px;
@@ -89,22 +95,45 @@
       padding: 8px 12px;
       border-radius: 8px;
       display: none;
+      margin: 10px 0;
     }
     #formatNote {
       font-size: 13px;
       color: #55606a;
+    }
+    .preview-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #55606a;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin: 20px 0 8px;
+      display: none;
     }
     img#preview {
       max-width: 100%;
       border-radius: 8px;
       border: 1px solid #e2e5e7;
     }
+    footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #eef0f1;
+      font-size: 13px;
+      color: #55606a;
+      text-align: center;
+    }
+    footer a {
+      color: var(--green);
+      text-decoration: none;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
 
   <header>
-    <img src="Logo_2.png" alt="Amruta Web Studio logo">
+    <img src="Logo 2.png" alt="Amruta Web Studio logo">
     <span>AMRUTA WEB STUDIO</span>
   </header>
 
@@ -131,7 +160,7 @@
   <label for="widthInput">Width (px)</label><br>
   <input type="number" id="widthInput" min="1">
   &nbsp;&nbsp;
-  <label for="heightInput">Height (px)</label><br style="display:none">
+  <label for="heightInput">Height (px)</label>
   <input type="number" id="heightInput" min="1">
   <br><br>
   <label>
@@ -157,10 +186,10 @@
   <br>
   <p class="status" id="originalSize"></p>
   <p class="status" id="compressedSize"></p>
-  <p class="status" id="statusText"></p>
-  <p class="warning" id="warningText"></p>
+  <div class="info-box" id="infoBox"></div>
+  <div class="warning" id="warningText"></div>
 
-  <br>
+  <p class="preview-label" id="previewLabel">👀 Preview — here's how it looks</p>
   <img id="preview" style="display: none; background:
     repeating-conic-gradient(#ddd 0% 25%, white 0% 50%) 50% / 20px 20px;">
 
@@ -170,6 +199,12 @@
   </a>
 
   <canvas id="canvas" style="display: none;"></canvas>
+
+  <footer>
+    Made by Amruta Web Studio ·
+    <a href="https://instagram.com/amrutawbstudio" target="_blank">Instagram</a> ·
+    <a href="mailto:hello@amrutawebstudio.com">hello@amrutawebstudio.com</a>
+  </footer>
 
   <script>
     const fileInput = document.getElementById('fileInput');
@@ -188,10 +223,11 @@
     const qualityValue = document.getElementById('qualityValue');
     const targetSizeInput = document.getElementById('targetSize');
     const targetButton = document.getElementById('targetButton');
+    const previewLabel = document.getElementById('previewLabel');
     const preview = document.getElementById('preview');
     const originalSizeText = document.getElementById('originalSize');
     const compressedSizeText = document.getElementById('compressedSize');
-    const statusText = document.getElementById('statusText');
+    const infoBox = document.getElementById('infoBox');
     const warningText = document.getElementById('warningText');
     const downloadLink = document.getElementById('downloadLink');
     const canvas = document.getElementById('canvas');
@@ -247,6 +283,7 @@
       const url = URL.createObjectURL(blob);
       preview.src = url;
       preview.style.display = 'block';
+      previewLabel.style.display = 'block';
 
       const isPng = formatSelect.value === 'image/png';
       const qualityText = isPng ? '' : (', quality used: ' + Math.round(qualityUsed * 100) + '%)');
@@ -268,21 +305,22 @@
 
     async function compressAndShow() {
       if (!currentImage) return;
+      infoBox.style.display = 'none';
       const quality = qualitySlider.value / 100;
       const blob = await compressAtQuality(quality);
       showResult(blob, quality, true);
-      statusText.textContent = '';
     }
 
     async function compressToTargetSize() {
       if (!currentImage) return;
       const targetKB = parseFloat(targetSizeInput.value);
+      infoBox.style.display = 'none';
       if (!targetKB || targetKB <= 0) {
-        statusText.textContent = 'Please enter a valid target size in KB.';
+        infoBox.textContent = 'Please enter a valid target size in KB.';
+        infoBox.style.display = 'block';
         return;
       }
       const targetBytes = targetKB * 1024;
-      statusText.textContent = 'Searching for the best quality...';
 
       let low = 0.05;
       let high = 1.0;
@@ -303,15 +341,18 @@
 
       if (bestBlob && bestBlob.size < originalFileSize) {
         showResult(bestBlob, bestQuality, false);
-        statusText.textContent = 'Done — got it under ' + targetKB + ' KB.';
+        infoBox.textContent = '✅ Done — got it under ' + targetKB + ' KB.';
+        infoBox.style.display = 'block';
       } else if (bestBlob) {
-        statusText.textContent = 'Your original file (' + formatBytes(originalFileSize) +
+        infoBox.textContent = 'ℹ️ Your original file (' + formatBytes(originalFileSize) +
           ') is already smaller than anything we can re-compress it to — no need to compress this one.';
+        infoBox.style.display = 'block';
       } else {
         const blob = await compressAtQuality(0.05);
         showResult(blob, 0.05, false);
-        statusText.textContent = 'Could not reach ' + targetKB +
+        infoBox.textContent = 'ℹ️ Could not reach ' + targetKB +
           ' KB even at lowest quality. This is the smallest possible result — try reducing the image dimensions instead.';
+        infoBox.style.display = 'block';
       }
     }
 
