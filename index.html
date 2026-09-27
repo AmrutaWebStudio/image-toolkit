@@ -48,8 +48,8 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    let currentImage = null;
-
+let currentImage = null;
+let originalFileSize = 0;
     function formatBytes(bytes) {
       return (bytes / 1024).toFixed(1) + ' KB';
     }
@@ -113,9 +113,12 @@
         }
       }
 
-      if (bestBlob) {
+            if (bestBlob && bestBlob.size < originalFileSize) {
         showResult(bestBlob, bestQuality);
         statusText.textContent = 'Done — got it under ' + targetKB + ' KB.';
+      } else if (bestBlob) {
+        statusText.textContent = 'Your original file (' + formatBytes(originalFileSize) +
+          ') is already smaller than anything we can re-compress it to — no need to compress this one.';
       } else {
         // Couldn't get under target even at lowest quality
         const blob = await compressAtQuality(0.05);
@@ -130,6 +133,7 @@
       if (!file) return;
 
       originalSizeText.textContent = 'Original size: ' + formatBytes(file.size);
+      originalFileSize = file.size;
 
       const img = new Image();
       img.onload = function() {
