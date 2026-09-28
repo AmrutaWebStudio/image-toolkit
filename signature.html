@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Signature to PNG — Amruta Image Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --dark: #1A252B;
+      --green: #04A168;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      color: var(--dark);
+      background: #ffffff;
+    }
+    a.back-link {
+      display: inline-block;
+      color: #55606a;
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    a.back-link:hover { color: var(--green); }
+    h1 { font-size: 24px; margin: 8px 0 4px; }
+    .tagline {
+      color: #55606a;
+      font-size: 15px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .privacy-note {
+      background: #f0faf5;
+      border: 1px solid #cfeee0;
+      color: #0c5a3b;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .info-box {
+      font-size: 14px;
+      color: #0c4a8a;
+      background: #eaf3fc;
+      border: 1px solid #cfe3f7;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 14px 0;
+      line-height: 1.5;
+    }
+    .info-box ul { margin: 6px 0 0; padding-left: 20px; }
+    .warning {
+      font-size: 13px;
+      color: #a15c04;
+      background: #fff6e9;
+      border: 1px solid #f0dfc0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin: 12px 0;
+      display: none;
+    }
+    h3 {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #55606a;
+      margin: 26px 0 10px;
+    }
+    select {
+      padding: 8px 10px;
+      border: 1px solid #d5dade;
+      border-radius: 6px;
+      font-size: 14px;
+      width: 100%;
+    }
+    input[type="range"] { width: 100%; }
+    .control { margin-bottom: 16px; }
+    .control label.title {
+      display: block;
+      font-size: 13px;
+      color: #55606a;
+      margin-bottom: 6px;
+    }
+    .hint { font-size: 12px; color: #55606a; margin-top: 4px; }
+    .checkbox-row { font-size: 14px; margin-bottom: 16px; }
+    button {
+      background: var(--green);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    #editorWrap { display: none; }
+    .preview-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #55606a;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin: 24px 0 8px;
+    }
+    canvas#result {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid #e2e5e7;
+      background: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+    }
+    .status {
+      font-size: 13px;
+      color: #55606a;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .action-row {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <a class="back-link" href="index.html">← Back to all tools</a>
+
+  <h1>Signature to PNG</h1>
+  <p class="tagline">
+    Turn a photographed signature into a clean file with a transparent background.
+  </p>
+  <div class="privacy-note">
+    🔒 Your signature is processed entirely on your device. Nothing is uploaded anywhere.
+  </div>
+
+  <div class="info-box">
+    <strong>For the best result:</strong>
+    <ul>
+      <li>Sign with a dark pen on plain white paper</li>
+      <li>Use bright, even light, with no shadow across the page</li>
+      <li>Hold your phone directly above the paper</li>
+      <li>Get close, so the signature fills most of the photo</li>
+    </ul>
+  </div>
+
+  <p>Select a photo of your signature:</p>
+  <input type="file" id="fileInput" accept="image/*">
+  <div class="warning" id="warningBox"></div>
+
+  <div id="editorWrap">
+
+    <h3>Adjust</h3>
+
+    <div class="control">
+      <label class="title" for="sensSlider">Ink sensitivity: <span id="sensValue">60</span></label>
+      <input type="range" id="sensSlider" min="0" max="100" value="60">
+      <div class="hint">Raise it if thin strokes fade away. Lower it if paper texture or specks show up.</div>
+    </div>
+
+    <div class="control">
+      <label class="title" for="colorSelect">Ink color</label>
+      <select id="colorSelect">
+        <option value="black">Black</option>
+        <option value="blue">Blue (like a ballpoint pen)</option>
+      </select>
+    </div>
+
+    <div class="checkbox-row">
+      <label><input type="checkbox" id="trimBox" checked> Trim empty space around the signature</label>
+    </div>
+
+    <p class="preview-label">👀 Preview — the checkerboard shows what is transparent</p>
+    <canvas id="result"></canvas>
+    <p class="status" id="resultInfo"></p>
+
+    <div class="action-row">
+      <button id="saveButton" disabled>⬇ Save PNG</button>
+      <button id="shareButton" disabled>📤 Share</button>
+    </div>
+    <p class="status" id="shareNote"></p>
+  </div>
+
+  <script>
+    const MAX_SIDE = 2000;
+
+    const fileInput = document.getElementById('fileInput');
+    const warningBox = document.getElementById('warningBox');
+    const editorWrap = document.getElementById('editorWrap');
+    const sensSlider = document.getElementById('sensSlider');
+    const sensValue = document.getElementById('sensValue');
+    const colorSelect = document.getElementById('colorSelect');
+    const trimBox = document.getElementById('trimBox');
+    const resultCanvas = document.getElementById('result');
+    const resultCtx = resultCanvas.getContext('2d');
+    const resultInfo = document.getElementById('resultInfo');
+    const saveButton = document.getElementById('saveButton');
+    const shareButton = document.getElementById('shareButton');
+    const shareNote = document.getElementById('shareNote');
+
+    let W = 0, H = 0;
+    let nMap = null;          // how bright each pixel is compared with the paper (1 = paper)
+    let currentBlob = null;
+    let blobToken = 0;
+    let blobTimer = null;
+    let frameQueued = false;
+
+    function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+    function smoothstep(a, b, x) {
+      const t = clamp((x - a) / (b - a), 0, 1);
+      return t * t * (3 - 2 * t);
+    }
+
+    function showWarning(text) {
+      warningBox.textContent = text;
+      warningBox.style.display = text ? 'block' : 'none';
+    }
+
+    function makeFileName() {
+      const d = new Date();
+      const pad = function(n) { return String(n).padStart(2, '0'); };
+      return 'signature-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+             '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.png';
+    }
+
+    /* ---------- Estimating the paper brightness ---------- */
+
+    function pass3x3(grid, gw, gh, mode) {
+      const out = new Float32Array(grid.length);
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+          let best = 0, total = 0, n = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = clamp(x + dx, 0, gw - 1);
+              const yy = clamp(y + dy, 0, gh - 1);
+              const val = grid[yy * gw + xx];
+              if (val > best) best = val;
+              total += val;
+              n++;
+            }
+          }
+          out[y * gw + x] = mode === 'max' ? best : total / n;
+        }
+      }
+      return out;
+    }
+
+    function buildBackground(data, w, h) {
+      const cell = Math.max(6, Math.round(Math.max(w, h) / 70));
+      const gw = Math.ceil(w / cell);
+      const gh = Math.ceil(h / cell);
+      const sum = new Float32Array(gw * gh);
+      const cnt = new Float32Array(gw * gh);
+
+      for (let y = 0; y < h; y += 2) {
+        const gy = Math.floor(y / cell);
+        for (let x = 0; x < w; x += 2) {
+          const i = (y * w + x) * 4;
+          const l = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          const gi = gy * gw + Math.floor(x / cell);
+          sum[gi] += l;
+          cnt[gi] += 1;
+        }
+      }
+
+      let grid = new Float32Array(gw * gh);
+      for (let i = 0; i < grid.length; i++) grid[i] = cnt[i] ? sum[i] / cnt[i] : 255;
+
+      grid = pass3x3(grid, gw, gh, 'max');
+      grid = pass3x3(grid, gw, gh, 'max');
+      grid = pass3x3(grid, gw, gh, 'mean');
+      grid = pass3x3(grid, gw, gh, 'mean');
+
+      return { grid: grid, gw: gw, gh: gh, cell: cell };
+    }
+
+    function bgAt(b, x, y) {
+      const gx = clamp(x / b.cell - 0.5, 0, b.gw - 1);
+      const gy = clamp(y / b.cell - 0.5, 0, b.gh - 1);
+      const x0 = Math.floor(gx), y0 = Math.floor(gy);
+      const x1 = Math.min(x0 + 1, b.gw - 1);
+      const y1 = Math.min(y0 + 1, b.gh - 1);
+      const fx = gx - x0, fy = gy - y0;
+      const g = b.grid, w = b.gw;
+      return g[y0 * w + x0] * (1 - fx) * (1 - fy) + g[y0 * w + x1] * fx * (1 - fy) +
+             g[y1 * w + x0] * (1 - fx) * fy       + g[y1 * w + x1] * fx * fy;
+    }
+
+    function analysePhoto(image) {
+      const s = Math.min(1, MAX_SIDE / Math.max(image.width, image.height));
+      W = Math.max(1, Math.round(image.width * s));
+      H = Math.max(1, Math.round(image.height * s));
+
+      const c = document.createElement('canvas');
+      c.width = W;
+      c.height = H;
+      const cx = c.getContext('2d', { willReadFrequently: true });
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(0, 0, W, H);
+      cx.drawImage(image, 0, 0, W, H);
+      const data = cx.getImageData(0, 0, W, H).data;
+
+      const bg = buildBackground(data, W, H);
+      nMap = new Float32Array(W * H);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = (y * W + x) * 4;
+          const luma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          nMap[y * W + x] = luma / Math.max(40, bgAt(bg, x, y));
+        }
+      }
+    }
+
+    /* ---------- Turning ink into a transparent PNG ---------- */
+
+    function render() {
+      if (!nMap) return;
+
+      const sens = Number(sensSlider.value);
+      const t = 0.6 + (sens / 100) * 0.35;   // brightness at which a pixel counts as paper
+      const lo = t - 0.4;                     // brightness at which a pixel counts as solid ink
+      const rgb = colorSelect.value === 'blue' ? [26, 63, 176] : [0, 0, 0];
+
+      // Ignore a thin border, where photos often have dark edges
+      const bx = Math.round(W * 0.015);
+      const by = Math.round(H * 0.015);
+
+      const full = new ImageData(W, H);
+      const d = full.data;
+      const rowCount = new Uint32Array(H);
+      const colCount = new Uint32Array(W);
+
+      for (let y = 0; y < H; y++) {
+        const insideY = y >= by && y < H - by;
+        for (let x = 0; x < W; x++) {
+          let a = 0;
+          if (insideY && x >= bx && x < W - bx) {
+            a = 1 - smoothstep(lo, t, nMap[y * W + x]);
+          }
+          const o = (y * W + x) * 4;
+          d[o] = rgb[0];
+          d[o + 1] = rgb[1];
+          d[o + 2] = rgb[2];
+          d[o + 3] = Math.round(a * 255);
+          if (a > 0.4) { rowCount[y]++; colCount[x]++; }
+        }
+      }
+
+      // Find where the ink is (ignoring lone specks)
+      let minX = -1, maxX = -1, minY = -1, maxY = -1;
+      for (let x = 0; x < W; x++) {
+        if (colCount[x] >= 2) { if (minX === -1) minX = x; maxX = x; }
+      }
+      for (let y = 0; y < H; y++) {
+        if (rowCount[y] >= 2) { if (minY === -1) minY = y; maxY = y; }
+      }
+
+      if (minX === -1 || minY === -1) {
+        resultCanvas.width = 300;
+        resultCanvas.height = 100;
+        showWarning('No signature was detected. Try raising the ink sensitivity, or retake the photo with a darker pen on plain white paper.');
+        saveButton.disabled = true;
+        shareButton.disabled = true;
+        currentBlob = null;
+        resultInfo.textContent = '';
+        return;
+      }
+      showWarning('');
+
+      let cropX = 0, cropY = 0, cropW = W, cropH = H;
+      if (trimBox.checked) {
+        const pad = Math.max(8, Math.round(Math.max(maxX - minX, maxY - minY) * 0.04));
+        cropX = Math.max(0, minX - pad);
+        cropY = Math.max(0, minY - pad);
+        cropW = Math.min(W, maxX + pad + 1) - cropX;
+        cropH = Math.min(H, maxY + pad + 1) - cropY;
+      }
+
+      const tmp = document.createElement('canvas');
+      tmp.width = W;
+      tmp.height = H;
+      tmp.getContext('2d').putImageData(full, 0, 0);
+
+      resultCanvas.width = cropW;
+      resultCanvas.height = cropH;
+      resultCtx.clearRect(0, 0, cropW, cropH);
+      resultCtx.drawImage(tmp, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+      prepareBlob(cropW, cropH);
+    }
+
+    // Prepare the file in advance so Share works instantly on tap
+    function prepareBlob(w, h) {
+      saveButton.disabled = true;
+      shareButton.disabled = true;
+      currentBlob = null;
+      resultInfo.textContent = 'Size: ' + w + ' × ' + h + ' px';
+      clearTimeout(blobTimer);
+      const token = ++blobToken;
+      blobTimer = setTimeout(function() {
+        resultCanvas.toBlob(function(blob) {
+          if (token !== blobToken || !blob) return;
+          currentBlob = blob;
+          saveButton.disabled = false;
+          shareButton.disabled = false;
+          resultInfo.textContent = 'Size: ' + w + ' × ' + h + ' px · File size: ' +
+            Math.round(blob.size / 1024) + ' KB';
+        }, 'image/png');
+      }, 250);
+    }
+
+    function scheduleRender() {
+      if (frameQueued) return;
+      frameQueued = true;
+      requestAnimationFrame(function() {
+        frameQueued = false;
+        render();
+      });
+    }
+
+    /* ---------- Events ---------- */
+
+    fileInput.addEventListener('change', function() {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const image = new Image();
+      image.onload = function() {
+        showWarning('');
+        analysePhoto(image);
+        editorWrap.style.display = 'block';
+        render();
+      };
+      image.onerror = function() {
+        showWarning('This image could not be opened. Some formats (like certain iPhone HEIC files) do not open in every browser. Try a JPEG or PNG.');
+      };
+      image.src = URL.createObjectURL(file);
+    });
+
+    sensSlider.addEventListener('input', function() {
+      sensValue.textContent = sensSlider.value;
+      scheduleRender();
+    });
+    colorSelect.addEventListener('change', scheduleRender);
+    trimBox.addEventListener('change', scheduleRender);
+
+    saveButton.addEventListener('click', function() {
+      if (!currentBlob) return;
+      const url = URL.createObjectURL(currentBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = makeFileName();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+    });
+
+    shareButton.addEventListener('click', async function() {
+      if (!currentBlob) return;
+      const file = new File([currentBlob], makeFileName(), { type: 'image/png' });
+      try {
+        await navigator.share({ files: [file], title: 'Signature' });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          shareNote.textContent = 'Sharing did not work here. Use Save PNG instead.';
+        }
+      }
+    });
+
+    (function() {
+      try {
+        const test = new File(['x'], 't.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [test] })) return;
+      } catch (e) {}
+      shareButton.style.display = 'none';
+      shareNote.textContent = "This browser can't open the share menu, so use Save PNG.";
+    })();
+  </script>
+</body>
+</html>
