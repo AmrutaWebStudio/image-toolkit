@@ -50,23 +50,68 @@
       border-radius: 8px;
       margin: 14px 0;
     }
-    #stageWrap {
+    button {
+      background: var(--green);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    button.secondary {
+      background: #eef0f1;
+      color: var(--dark);
+    }
+    #stageWrap, #resultWrap {
       display: none;
       margin-top: 16px;
     }
-    canvas#stage {
+    canvas#stage, canvas#result {
       display: block;
       margin: 0 auto;
       border-radius: 8px;
       border: 1px solid #e2e5e7;
-      touch-action: none;
       max-width: 100%;
     }
+    canvas#stage { touch-action: none; }
+    canvas#result { height: auto; }
     .status {
       font-size: 13px;
       color: #55606a;
       margin-top: 10px;
       text-align: center;
+    }
+    .action-row {
+      margin-top: 16px;
+      text-align: center;
+    }
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 14px 0;
+    }
+    .chip {
+      background: #eef0f1;
+      color: var(--dark);
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+    }
+    .chip.active {
+      background: var(--green);
+      color: white;
+    }
+    .preview-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #55606a;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin: 20px 0 8px;
     }
   </style>
 </head>
@@ -85,32 +130,70 @@
   <p>Take or select a photo of your document:</p>
   <input type="file" id="fileInput" accept="image/*">
 
+  <!-- STEP 1: mark corners -->
   <div id="stageWrap">
     <div class="info-box">
       👆 Drag the four green dots onto the four corners of your document.
     </div>
     <canvas id="stage"></canvas>
-    <p class="status" id="cornerStatus"></p>
+    <div class="action-row">
+      <button id="flattenButton">Flatten document →</button>
+    </div>
+    <p class="status" id="workStatus"></p>
+  </div>
+
+  <!-- STEP 2: result + filters -->
+  <div id="resultWrap">
+    <p class="preview-label">👀 Preview — choose a look</p>
+    <div class="chips" id="chips">
+      <button class="chip" data-filter="original">Original</button>
+      <button class="chip" data-filter="enhanced">Enhanced color</button>
+      <button class="chip active" data-filter="clean">Clean white</button>
+      <button class="chip" data-filter="bw">Black &amp; white</button>
+    </div>
+    <canvas id="result"></canvas>
+    <p class="status" id="resultInfo"></p>
+    <div class="action-row">
+      <button class="secondary" id="backButton">← Adjust corners</button>
+    </div>
   </div>
 
   <script>
+    const MAX_SOURCE = 3000;   // longest side of the photo we work from
+    const MAX_OUTPUT = 2000;   // longest side of the flattened scan
+
     const fileInput = document.getElementById('fileInput');
     const stageWrap = document.getElementById('stageWrap');
+    const resultWrap = document.getElementById('resultWrap');
     const canvas = document.getElementById('stage');
     const ctx = canvas.getContext('2d');
-    const cornerStatus = document.getElementById('cornerStatus');
+    const resultCanvas = document.getElementById('result');
+    const resultCtx = resultCanvas.getContext('2d');
+    const flattenButton = document.getElementById('flattenButton');
+    const backButton = document.getElementById('backButton');
+    const workStatus = document.getElementById('workStatus');
+    const resultInfo = document.getElementById('resultInfo');
+    const chips = document.querySelectorAll('.chip');
 
     let img = null;
-    let scale = 1;          // display pixels per image pixel
+    let scale = 1;
     let dpr = window.devicePixelRatio || 1;
-    let corners = [];       // 4 points in IMAGE coordinates: TL, TR, BR, BL
+    let corners = [];
     let dragIndex = -1;
 
-    const HANDLE_RADIUS_PX = 14;   // drawn size, in screen pixels
-    const HIT_RADIUS_PX = 34;      // how close a finger must be to grab a dot
+    let flatData = null;     // flattened image (unfiltered)
+    let bg = null;           // paper-brightness map
+    let currentFilter = 'clean';
+
+    const HANDLE_RADIUS_PX = 14;
+    const HIT_RADIUS_PX = 34;
+
+    function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+    /* ---------- Step 1: corner selection ---------- */
 
     function layoutCanvas() {
-      if (!img) return;
+      if (!img || stageWrap.style.display === 'none') return;
       const maxW = stageWrap.clientWidth;
       const maxH = window.innerHeight * 0.7;
       scale = Math.min(maxW / img.width, maxH / img.height);
@@ -125,12 +208,10 @@
 
     function draw() {
       if (!img) return;
-      // Work in image coordinates: 1 unit = 1 image pixel
       ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
       ctx.clearRect(0, 0, img.width, img.height);
       ctx.drawImage(img, 0, 0);
 
-      // Outline of the selected area
       ctx.lineWidth = 3 / scale;
       ctx.strokeStyle = '#04A168';
       ctx.fillStyle = 'rgba(4, 161, 104, 0.12)';
@@ -141,7 +222,6 @@
       ctx.fill();
       ctx.stroke();
 
-      // Corner handles
       corners.forEach(function(c) {
         ctx.beginPath();
         ctx.arc(c.x, c.y, HANDLE_RADIUS_PX / scale, 0, Math.PI * 2);
@@ -151,15 +231,6 @@
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
       });
-
-      updateStatus();
-    }
-
-    function updateStatus() {
-      const labels = ['Top-left', 'Top-right', 'Bottom-right', 'Bottom-left'];
-      cornerStatus.textContent = corners.map(function(c, i) {
-        return labels[i] + ': ' + Math.round(c.x) + ', ' + Math.round(c.y);
-      }).join('  ·  ');
     }
 
     function pointerToImage(e) {
@@ -172,8 +243,8 @@
 
     function clampToImage(p) {
       return {
-        x: Math.max(0, Math.min(img.width, p.x)),
-        y: Math.max(0, Math.min(img.height, p.y))
+        x: clamp(p.x, 0, img.width),
+        y: clamp(p.y, 0, img.height)
       };
     }
 
@@ -209,7 +280,6 @@
       const newImg = new Image();
       newImg.onload = function() {
         img = newImg;
-        // Start with the box inset 10% from each edge
         const mx = img.width * 0.1;
         const my = img.height * 0.1;
         corners = [
@@ -218,6 +288,10 @@
           { x: img.width - mx, y: img.height - my },
           { x: mx,             y: img.height - my }
         ];
+        flatData = null;
+        bg = null;
+        workStatus.textContent = '';
+        resultWrap.style.display = 'none';
         stageWrap.style.display = 'block';
         layoutCanvas();
       };
@@ -225,6 +299,278 @@
     });
 
     window.addEventListener('resize', layoutCanvas);
+
+    /* ---------- Step 2: flatten (perspective transform) ---------- */
+
+    // Checks the 4 corners form a proper, non-twisted four-sided shape
+    function isValidQuad(pts) {
+      let sign = 0;
+      for (let i = 0; i < 4; i++) {
+        const a = pts[i], b = pts[(i + 1) % 4], c = pts[(i + 2) % 4];
+        const cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+        if (Math.abs(cross) < 1) return false;
+        const s = cross > 0 ? 1 : -1;
+        if (sign === 0) sign = s;
+        else if (s !== sign) return false;
+      }
+      return true;
+    }
+
+    // Solves for the 8 numbers that map points in the output rectangle (dst)
+    // to points in the photo (src)
+    function solveHomography(dst, src) {
+      const A = [];
+      const b = [];
+      for (let i = 0; i < 4; i++) {
+        const x = dst[i].x, y = dst[i].y, u = src[i].x, v = src[i].y;
+        A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+        A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+      }
+      const n = 8;
+      for (let i = 0; i < n; i++) {
+        let maxRow = i;
+        for (let r = i + 1; r < n; r++) {
+          if (Math.abs(A[r][i]) > Math.abs(A[maxRow][i])) maxRow = r;
+        }
+        [A[i], A[maxRow]] = [A[maxRow], A[i]];
+        [b[i], b[maxRow]] = [b[maxRow], b[i]];
+        if (Math.abs(A[i][i]) < 1e-12) return null;
+        for (let r = i + 1; r < n; r++) {
+          const f = A[r][i] / A[i][i];
+          for (let c = i; c < n; c++) A[r][c] -= f * A[i][c];
+          b[r] -= f * b[i];
+        }
+      }
+      const h = new Array(n);
+      for (let i = n - 1; i >= 0; i--) {
+        let s = b[i];
+        for (let c = i + 1; c < n; c++) s -= A[i][c] * h[c];
+        h[i] = s / A[i][i];
+      }
+      return h;
+    }
+
+    function flatten() {
+      const s = Math.min(1, MAX_SOURCE / Math.max(img.width, img.height));
+      const sw = Math.round(img.width * s);
+      const sh = Math.round(img.height * s);
+
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = sw;
+      srcCanvas.height = sh;
+      const sctx = srcCanvas.getContext('2d');
+      sctx.drawImage(img, 0, 0, sw, sh);
+      const src = sctx.getImageData(0, 0, sw, sh);
+      const sp = corners.map(function(c) { return { x: c.x * s, y: c.y * s }; });
+
+      const dist = function(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); };
+      let outW = Math.max(dist(sp[0], sp[1]), dist(sp[3], sp[2]));
+      let outH = Math.max(dist(sp[0], sp[3]), dist(sp[1], sp[2]));
+      const k = Math.min(1, MAX_OUTPUT / Math.max(outW, outH));
+      outW = Math.max(2, Math.round(outW * k));
+      outH = Math.max(2, Math.round(outH * k));
+
+      const dst = [
+        { x: 0, y: 0 }, { x: outW, y: 0 },
+        { x: outW, y: outH }, { x: 0, y: outH }
+      ];
+      const h = solveHomography(dst, sp);
+      if (!h) throw new Error('bad-corners');
+
+      const out = new ImageData(outW, outH);
+      const sd = src.data;
+      const od = out.data;
+
+      for (let y = 0; y < outH; y++) {
+        for (let x = 0; x < outW; x++) {
+          const px = x + 0.5, py = y + 0.5;
+          const d = h[6] * px + h[7] * py + 1;
+          const u = (h[0] * px + h[1] * py + h[2]) / d - 0.5;
+          const v = (h[3] * px + h[4] * py + h[5]) / d - 0.5;
+
+          const x0 = Math.floor(u), y0 = Math.floor(v);
+          const fx = u - x0, fy = v - y0;
+          const xa = clamp(x0, 0, sw - 1), xb = clamp(x0 + 1, 0, sw - 1);
+          const ya = clamp(y0, 0, sh - 1), yb = clamp(y0 + 1, 0, sh - 1);
+
+          const i00 = (ya * sw + xa) * 4, i10 = (ya * sw + xb) * 4;
+          const i01 = (yb * sw + xa) * 4, i11 = (yb * sw + xb) * 4;
+          const w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy);
+          const w01 = (1 - fx) * fy,       w11 = fx * fy;
+
+          const o = (y * outW + x) * 4;
+          for (let c = 0; c < 3; c++) {
+            od[o + c] = sd[i00 + c] * w00 + sd[i10 + c] * w10 +
+                        sd[i01 + c] * w01 + sd[i11 + c] * w11;
+          }
+          od[o + 3] = 255;
+        }
+      }
+      return out;
+    }
+
+    /* ---------- Filters ---------- */
+
+    // Runs a 3x3 "max" (dilate) or "mean" (blur) pass over a small grid
+    function pass3x3(grid, gw, gh, mode) {
+      const out = new Float32Array(grid.length);
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+          let best = 0, total = 0, n = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = clamp(x + dx, 0, gw - 1);
+              const yy = clamp(y + dy, 0, gh - 1);
+              const val = grid[yy * gw + xx];
+              if (val > best) best = val;
+              total += val;
+              n++;
+            }
+          }
+          out[y * gw + x] = mode === 'max' ? best : total / n;
+        }
+      }
+      return out;
+    }
+
+    // Estimates how bright the blank paper is in each part of the scan
+    function buildBackground(data, W, H) {
+      const cell = Math.max(6, Math.round(Math.max(W, H) / 90));
+      const gw = Math.ceil(W / cell);
+      const gh = Math.ceil(H / cell);
+      const sum = new Float32Array(gw * gh);
+      const cnt = new Float32Array(gw * gh);
+
+      for (let y = 0; y < H; y += 2) {
+        const gy = Math.floor(y / cell);
+        for (let x = 0; x < W; x += 2) {
+          const i = (y * W + x) * 4;
+          const l = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          const gi = gy * gw + Math.floor(x / cell);
+          sum[gi] += l;
+          cnt[gi] += 1;
+        }
+      }
+
+      let grid = new Float32Array(gw * gh);
+      for (let i = 0; i < grid.length; i++) grid[i] = cnt[i] ? sum[i] / cnt[i] : 255;
+
+      // Grow bright areas so dark text doesn't pull the paper estimate down, then smooth
+      grid = pass3x3(grid, gw, gh, 'max');
+      grid = pass3x3(grid, gw, gh, 'max');
+      grid = pass3x3(grid, gw, gh, 'mean');
+      grid = pass3x3(grid, gw, gh, 'mean');
+
+      return { grid: grid, gw: gw, gh: gh, cell: cell };
+    }
+
+    function bgAt(b, x, y) {
+      const gx = clamp(x / b.cell - 0.5, 0, b.gw - 1);
+      const gy = clamp(y / b.cell - 0.5, 0, b.gh - 1);
+      const x0 = Math.floor(gx), y0 = Math.floor(gy);
+      const x1 = Math.min(x0 + 1, b.gw - 1);
+      const y1 = Math.min(y0 + 1, b.gh - 1);
+      const fx = gx - x0, fy = gy - y0;
+      const g = b.grid, w = b.gw;
+      return g[y0 * w + x0] * (1 - fx) * (1 - fy) + g[y0 * w + x1] * fx * (1 - fy) +
+             g[y1 * w + x0] * (1 - fx) * fy       + g[y1 * w + x1] * fx * fy;
+    }
+
+    function smoothstep(a, b, x) {
+      const t = clamp((x - a) / (b - a), 0, 1);
+      return t * t * (3 - 2 * t);
+    }
+
+    function applyFilter(name) {
+      const W = flatData.width, H = flatData.height;
+      const out = new ImageData(W, H);
+      const sd = flatData.data;
+      const od = out.data;
+
+      if (name === 'original') {
+        od.set(sd);
+        return out;
+      }
+
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = (y * W + x) * 4;
+          const r = sd[i], g = sd[i + 1], b = sd[i + 2];
+          const paper = Math.max(40, bgAt(bg, x, y));
+
+          if (name === 'enhanced') {
+            od[i]     = clamp((r / paper - 0.08) / 0.87, 0, 1) * 255;
+            od[i + 1] = clamp((g / paper - 0.08) / 0.87, 0, 1) * 255;
+            od[i + 2] = clamp((b / paper - 0.08) / 0.87, 0, 1) * 255;
+          } else {
+            const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+            const n = luma / paper;
+            let v;
+            if (name === 'clean') {
+              v = clamp((n - 0.45) / (0.92 - 0.45), 0, 1) * 255;
+            } else {
+              v = smoothstep(0.6, 0.8, n) * 255;
+            }
+            od[i] = od[i + 1] = od[i + 2] = v;
+          }
+          od[i + 3] = 255;
+        }
+      }
+      return out;
+    }
+
+    function showFilter(name) {
+      currentFilter = name;
+      const data = applyFilter(name);
+      resultCanvas.width = data.width;
+      resultCanvas.height = data.height;
+      resultCtx.putImageData(data, 0, 0);
+      chips.forEach(function(c) {
+        c.classList.toggle('active', c.dataset.filter === name);
+      });
+      resultInfo.textContent = 'Scan size: ' + data.width + ' × ' + data.height + ' px';
+    }
+
+    /* ---------- Buttons ---------- */
+
+    flattenButton.addEventListener('click', function() {
+      if (!img) return;
+      if (!isValidQuad(corners)) {
+        workStatus.textContent = 'The corners cross over each other — drag them so they outline the document without twisting.';
+        return;
+      }
+      workStatus.textContent = 'Flattening your document…';
+      flattenButton.disabled = true;
+
+      setTimeout(function() {
+        try {
+          flatData = flatten();
+          bg = buildBackground(flatData.data, flatData.width, flatData.height);
+          stageWrap.style.display = 'none';
+          resultWrap.style.display = 'block';
+          showFilter(currentFilter);
+          resultWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          workStatus.textContent = '';
+        } catch (err) {
+          workStatus.textContent = 'Something went wrong while flattening this photo. Try adjusting the corners, or use a smaller photo.';
+        }
+        flattenButton.disabled = false;
+      }, 40);
+    });
+
+    backButton.addEventListener('click', function() {
+      resultWrap.style.display = 'none';
+      stageWrap.style.display = 'block';
+      layoutCanvas();
+      stageWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    chips.forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        if (!flatData) return;
+        showFilter(chip.dataset.filter);
+      });
+    });
   </script>
 </body>
 </html>
