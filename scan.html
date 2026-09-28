@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Document Scanner — Amruta Image Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --dark: #1A252B;
+      --green: #04A168;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      color: var(--dark);
+      background: #ffffff;
+    }
+    a.back-link {
+      display: inline-block;
+      color: #55606a;
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    a.back-link:hover { color: var(--green); }
+    h1 { font-size: 24px; margin: 8px 0 4px; }
+    .tagline {
+      color: #55606a;
+      font-size: 15px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .privacy-note {
+      background: #f0faf5;
+      border: 1px solid #cfeee0;
+      color: #0c5a3b;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 28px;
+    }
+    .info-box {
+      font-size: 14px;
+      color: #0c4a8a;
+      background: #eaf3fc;
+      border: 1px solid #cfe3f7;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 14px 0;
+    }
+    #stageWrap {
+      display: none;
+      margin-top: 16px;
+    }
+    canvas#stage {
+      display: block;
+      margin: 0 auto;
+      border-radius: 8px;
+      border: 1px solid #e2e5e7;
+      touch-action: none;
+      max-width: 100%;
+    }
+    .status {
+      font-size: 13px;
+      color: #55606a;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <a class="back-link" href="index.html">← Back to all tools</a>
+
+  <h1>Document Scanner</h1>
+  <p class="tagline">
+    Photograph a document, mark its corners, and get a clean, flat scan.
+  </p>
+  <div class="privacy-note">
+    🔒 Your document is processed entirely on your device. Nothing is uploaded anywhere.
+  </div>
+
+  <p>Take or select a photo of your document:</p>
+  <input type="file" id="fileInput" accept="image/*">
+
+  <div id="stageWrap">
+    <div class="info-box">
+      👆 Drag the four green dots onto the four corners of your document.
+    </div>
+    <canvas id="stage"></canvas>
+    <p class="status" id="cornerStatus"></p>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const stageWrap = document.getElementById('stageWrap');
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
+    const cornerStatus = document.getElementById('cornerStatus');
+
+    let img = null;
+    let scale = 1;          // display pixels per image pixel
+    let dpr = window.devicePixelRatio || 1;
+    let corners = [];       // 4 points in IMAGE coordinates: TL, TR, BR, BL
+    let dragIndex = -1;
+
+    const HANDLE_RADIUS_PX = 14;   // drawn size, in screen pixels
+    const HIT_RADIUS_PX = 34;      // how close a finger must be to grab a dot
+
+    function layoutCanvas() {
+      if (!img) return;
+      const maxW = stageWrap.clientWidth;
+      const maxH = window.innerHeight * 0.7;
+      scale = Math.min(maxW / img.width, maxH / img.height);
+      const cssW = Math.round(img.width * scale);
+      const cssH = Math.round(img.height * scale);
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      draw();
+    }
+
+    function draw() {
+      if (!img) return;
+      // Work in image coordinates: 1 unit = 1 image pixel
+      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+      ctx.clearRect(0, 0, img.width, img.height);
+      ctx.drawImage(img, 0, 0);
+
+      // Outline of the selected area
+      ctx.lineWidth = 3 / scale;
+      ctx.strokeStyle = '#04A168';
+      ctx.fillStyle = 'rgba(4, 161, 104, 0.12)';
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Corner handles
+      corners.forEach(function(c) {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, HANDLE_RADIUS_PX / scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#04A168';
+        ctx.fill();
+        ctx.lineWidth = 3 / scale;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+      });
+
+      updateStatus();
+    }
+
+    function updateStatus() {
+      const labels = ['Top-left', 'Top-right', 'Bottom-right', 'Bottom-left'];
+      cornerStatus.textContent = corners.map(function(c, i) {
+        return labels[i] + ': ' + Math.round(c.x) + ', ' + Math.round(c.y);
+      }).join('  ·  ');
+    }
+
+    function pointerToImage(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - rect.left) / scale,
+        y: (e.clientY - rect.top) / scale
+      };
+    }
+
+    function clampToImage(p) {
+      return {
+        x: Math.max(0, Math.min(img.width, p.x)),
+        y: Math.max(0, Math.min(img.height, p.y))
+      };
+    }
+
+    canvas.addEventListener('pointerdown', function(e) {
+      if (!img) return;
+      const p = pointerToImage(e);
+      let best = -1;
+      let bestDist = HIT_RADIUS_PX / scale;
+      corners.forEach(function(c, i) {
+        const d = Math.hypot(c.x - p.x, c.y - p.y);
+        if (d < bestDist) { bestDist = d; best = i; }
+      });
+      if (best !== -1) {
+        dragIndex = best;
+        canvas.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      }
+    });
+
+    canvas.addEventListener('pointermove', function(e) {
+      if (dragIndex === -1) return;
+      corners[dragIndex] = clampToImage(pointerToImage(e));
+      draw();
+    });
+
+    function endDrag() { dragIndex = -1; }
+    canvas.addEventListener('pointerup', endDrag);
+    canvas.addEventListener('pointercancel', endDrag);
+
+    fileInput.addEventListener('change', function() {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const newImg = new Image();
+      newImg.onload = function() {
+        img = newImg;
+        // Start with the box inset 10% from each edge
+        const mx = img.width * 0.1;
+        const my = img.height * 0.1;
+        corners = [
+          { x: mx,             y: my },
+          { x: img.width - mx, y: my },
+          { x: img.width - mx, y: img.height - my },
+          { x: mx,             y: img.height - my }
+        ];
+        stageWrap.style.display = 'block';
+        layoutCanvas();
+      };
+      newImg.src = URL.createObjectURL(file);
+    });
+
+    window.addEventListener('resize', layoutCanvas);
+  </script>
+</body>
+</html>
