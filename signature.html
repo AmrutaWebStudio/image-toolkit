@@ -183,7 +183,8 @@
     <p class="status" id="resultInfo"></p>
 
     <div class="action-row">
-      <button id="saveButton" disabled>⬇ Save PNG</button>
+      <button id="saveButton" disabled>⬇ Save PNG (transparent)</button>
+      <button id="saveWhiteButton" style="background:#eef0f1; color:#1A252B;">⬇ Save on white</button>
       <button id="shareButton" disabled>📤 Share</button>
     </div>
     <p class="status" id="shareNote"></p>
@@ -463,6 +464,27 @@
       a.click();
       a.remove();
       setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+    });
+    document.getElementById('saveWhiteButton').addEventListener('click', function() {
+      if (!currentBlob) return;
+      const c = document.createElement('canvas');
+      c.width = resultCanvas.width;
+      c.height = resultCanvas.height;
+      const cx = c.getContext('2d');
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(0, 0, c.width, c.height);
+      cx.drawImage(resultCanvas, 0, 0);
+      c.toBlob(function(blob) {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = makeFileName().replace('signature-', 'signature-white-');
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+      }, 'image/png');
     });
 
     shareButton.addEventListener('click', async function() {
