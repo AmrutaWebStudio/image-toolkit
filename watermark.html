@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Watermark — Amruta Image Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --dark: #1A252B;
+      --green: #04A168;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      color: var(--dark);
+      background: #ffffff;
+    }
+    a.back-link {
+      display: inline-block;
+      color: #55606a;
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    a.back-link:hover { color: var(--green); }
+    h1 { font-size: 24px; margin: 8px 0 4px; }
+    .tagline {
+      color: #55606a;
+      font-size: 15px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .privacy-note {
+      background: #f0faf5;
+      border: 1px solid #cfeee0;
+      color: #0c5a3b;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 28px;
+    }
+    .info-box {
+      font-size: 14px;
+      color: #0c4a8a;
+      background: #eaf3fc;
+      border: 1px solid #cfe3f7;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 14px 0;
+      display: none;
+    }
+    h3 {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #55606a;
+      margin: 26px 0 10px;
+    }
+    input[type="text"], select {
+      padding: 8px 10px;
+      border: 1px solid #d5dade;
+      border-radius: 6px;
+      font-size: 14px;
+      width: 100%;
+    }
+    input[type="range"] { width: 100%; }
+    .control { margin-bottom: 16px; }
+    .control label.title {
+      display: block;
+      font-size: 13px;
+      color: #55606a;
+      margin-bottom: 6px;
+    }
+    .checkbox-row {
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    button {
+      background: var(--green);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    #editorWrap { display: none; }
+    .preview-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #55606a;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin: 24px 0 8px;
+    }
+    canvas#canvas {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid #e2e5e7;
+    }
+    .status {
+      font-size: 13px;
+      color: #55606a;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .action-row {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <a class="back-link" href="index.html">← Back to all tools</a>
+
+  <h1>Watermark</h1>
+  <p class="tagline">
+    Stamp text across an image before you share it, for example "Only for verification".
+  </p>
+  <div class="privacy-note">
+    🔒 Your image is processed entirely on your device. Nothing is uploaded anywhere.
+  </div>
+
+  <p>Select an image:</p>
+  <input type="file" id="fileInput" accept="image/*">
+  <div class="info-box" id="infoBox"></div>
+
+  <div id="editorWrap">
+
+    <h3>Your stamp</h3>
+    <div class="control">
+      <label class="title" for="textInput">Text</label>
+      <input type="text" id="textInput" value="Only for verification" maxlength="80">
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" id="addDate" checked> Add today's date</label>
+    </div>
+
+    <div class="control">
+      <label class="title" for="layoutSelect">Layout</label>
+      <select id="layoutSelect">
+        <option value="tiled">Repeated across the image</option>
+        <option value="center">Single stamp in the center</option>
+        <option value="corner">Single stamp in the bottom-right corner</option>
+      </select>
+    </div>
+
+    <div class="control">
+      <label class="title" for="sizeSlider">Text size: <span id="sizeValue">6</span>%</label>
+      <input type="range" id="sizeSlider" min="2" max="15" value="6">
+    </div>
+
+    <div class="control">
+      <label class="title" for="opacitySlider">Opacity: <span id="opacityValue">40</span>%</label>
+      <input type="range" id="opacitySlider" min="10" max="100" value="40">
+    </div>
+
+    <div class="control">
+      <label class="title" for="colorSelect">Color</label>
+      <select id="colorSelect">
+        <option value="#808080">Gray (works on light and dark)</option>
+        <option value="#ffffff">White</option>
+        <option value="#000000">Black</option>
+      </select>
+    </div>
+
+    <p class="preview-label">👀 Preview — here's how it looks</p>
+    <canvas id="canvas"></canvas>
+    <p class="status" id="resultInfo"></p>
+
+    <div class="action-row">
+      <button id="saveButton" disabled>⬇ Save image</button>
+      <button id="shareButton" disabled>📤 Share</button>
+    </div>
+    <p class="status" id="shareNote"></p>
+  </div>
+
+  <script>
+    const MAX_SIDE = 3000;
+
+    const fileInput = document.getElementById('fileInput');
+    const infoBox = document.getElementById('infoBox');
+    const editorWrap = document.getElementById('editorWrap');
+    const textInput = document.getElementById('textInput');
+    const addDate = document.getElementById('addDate');
+    const layoutSelect = document.getElementById('layoutSelect');
+    const sizeSlider = document.getElementById('sizeSlider');
+    const sizeValue = document.getElementById('sizeValue');
+    const opacitySlider = document.getElementById('opacitySlider');
+    const opacityValue = document.getElementById('opacityValue');
+    const colorSelect = document.getElementById('colorSelect');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const resultInfo = document.getElementById('resultInfo');
+    const saveButton = document.getElementById('saveButton');
+    const shareButton = document.getElementById('shareButton');
+    const shareNote = document.getElementById('shareNote');
+
+    let img = null;
+    let currentBlob = null;
+    let blobToken = 0;
+    let blobTimer = null;
+    let frameQueued = false;
+
+    function showInfo(text) {
+      infoBox.textContent = text;
+      infoBox.style.display = text ? 'block' : 'none';
+    }
+
+    function makeFileName() {
+      const d = new Date();
+      const pad = function(n) { return String(n).padStart(2, '0'); };
+      return 'watermarked-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+             '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.jpg';
+    }
+
+    function getStampText() {
+      let t = textInput.value.trim();
+      if (addDate.checked) {
+        const d = new Date().toLocaleDateString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric'
+        });
+        t = t ? t + ' · ' + d : d;
+      }
+      return t;
+    }
+
+    function setFont(size) {
+      ctx.font = '600 ' + size + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    }
+
+    function render() {
+      if (!img) return;
+
+      const s = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * s));
+      const h = Math.max(1, Math.round(img.height * s));
+      canvas.width = w;
+      canvas.height = h;
+
+      // White base (so transparent PNGs don't turn black in the JPEG)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const text = getStampText();
+      const layout = layoutSelect.value;
+
+      if (text) {
+        let fontSize = w * sizeSlider.value / 100;
+        setFont(fontSize);
+        ctx.fillStyle = colorSelect.value;
+        ctx.globalAlpha = opacitySlider.value / 100;
+
+        if (layout === 'tiled') {
+          ctx.save();
+          ctx.translate(w / 2, h / 2);
+          ctx.rotate(-30 * Math.PI / 180);
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          const textW = ctx.measureText(text).width;
+          const stepX = textW + fontSize * 2;
+          const stepY = fontSize * 3;
+          const reach = Math.hypot(w, h) / 2 + stepX;
+
+          let row = 0;
+          for (let y = -reach; y <= reach; y += stepY, row++) {
+            const offset = (row % 2) ? stepX / 2 : 0;
+            for (let x = -reach; x <= reach; x += stepX) {
+              ctx.fillText(text, x + offset, y);
+            }
+          }
+          ctx.restore();
+        } else {
+          // Single stamp: shrink if it would be wider than the image
+          let textW = ctx.measureText(text).width;
+          if (textW > w * 0.9) {
+            fontSize = fontSize * (w * 0.9) / textW;
+            setFont(fontSize);
+          }
+          if (layout === 'center') {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, w / 2, h / 2);
+          } else {
+            const pad = fontSize * 0.6;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(text, w - pad, h - pad);
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      prepareBlob(w, h);
+    }
+
+    // Prepare the file in advance so Share works instantly on tap
+    function prepareBlob(w, h) {
+      saveButton.disabled = true;
+      shareButton.disabled = true;
+      currentBlob = null;
+      resultInfo.textContent = 'Size: ' + w + ' × ' + h + ' px';
+      clearTimeout(blobTimer);
+      const token = ++blobToken;
+      blobTimer = setTimeout(function() {
+        canvas.toBlob(function(blob) {
+          if (token !== blobToken || !blob) return;
+          currentBlob = blob;
+          saveButton.disabled = false;
+          shareButton.disabled = false;
+          resultInfo.textContent = 'Size: ' + w + ' × ' + h + ' px · File size: ' +
+            Math.round(blob.size / 1024) + ' KB';
+        }, 'image/jpeg', 0.92);
+      }, 250);
+    }
+
+    function scheduleRender() {
+      if (frameQueued) return;
+      frameQueued = true;
+      requestAnimationFrame(function() {
+        frameQueued = false;
+        render();
+      });
+    }
+
+    fileInput.addEventListener('change', function() {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const newImg = new Image();
+      newImg.onload = function() {
+        img = newImg;
+        showInfo('');
+        editorWrap.style.display = 'block';
+        render();
+      };
+      newImg.onerror = function() {
+        showInfo('This image could not be opened. Some formats (like certain iPhone HEIC files) do not open in every browser. Try a JPEG or PNG.');
+      };
+      newImg.src = URL.createObjectURL(file);
+    });
+
+    textInput.addEventListener('input', scheduleRender);
+    addDate.addEventListener('change', scheduleRender);
+    layoutSelect.addEventListener('change', scheduleRender);
+    colorSelect.addEventListener('change', scheduleRender);
+    sizeSlider.addEventListener('input', function() {
+      sizeValue.textContent = sizeSlider.value;
+      scheduleRender();
+    });
+    opacitySlider.addEventListener('input', function() {
+      opacityValue.textContent = opacitySlider.value;
+      scheduleRender();
+    });
+
+    saveButton.addEventListener('click', function() {
+      if (!currentBlob) return;
+      const url = URL.createObjectURL(currentBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = makeFileName();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+    });
+
+    shareButton.addEventListener('click', async function() {
+      if (!currentBlob) return;
+      const file = new File([currentBlob], makeFileName(), { type: 'image/jpeg' });
+      try {
+        await navigator.share({ files: [file], title: 'Watermarked image' });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          shareNote.textContent = 'Sharing did not work here. Use Save image instead.';
+        }
+      }
+    });
+
+    (function() {
+      try {
+        const test = new File(['x'], 't.jpg', { type: 'image/jpeg' });
+        if (navigator.canShare && navigator.canShare({ files: [test] })) return;
+      } catch (e) {}
+      shareButton.style.display = 'none';
+      shareNote.textContent = "This browser can't open the share menu, so use Save image.";
+    })();
+  </script>
+</body>
+</html>
