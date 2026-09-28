@@ -152,7 +152,12 @@
       <button class="chip" data-filter="bw">Black &amp; white</button>
     </div>
     <canvas id="result"></canvas>
-    <p class="status" id="resultInfo"></p>
+        <p class="status" id="resultInfo"></p>
+    <div class="action-row" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+      <button id="saveButton">⬇ Save image</button>
+      <button id="shareButton">📤 Share</button>
+    </div>
+    <p class="status" id="shareNote"></p>
     <div class="action-row">
       <button class="secondary" id="backButton">← Adjust corners</button>
     </div>
@@ -173,7 +178,19 @@
     const backButton = document.getElementById('backButton');
     const workStatus = document.getElementById('workStatus');
     const resultInfo = document.getElementById('resultInfo');
-    const chips = document.querySelectorAll('.chip');
+        const chips = document.querySelectorAll('.chip');
+    const saveButton = document.getElementById('saveButton');
+    const shareButton = document.getElementById('shareButton');
+    const shareNote = document.getElementById('shareNote');
+    let currentBlob = null;
+    let blobToken = 0;
+
+    function makeFileName() {
+      const d = new Date();
+      const pad = function(n) { return String(n).padStart(2, '0'); };
+      return 'scan-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+             '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.jpg';
+    }
 
     let img = null;
     let scale = 1;
@@ -528,7 +545,13 @@
       chips.forEach(function(c) {
         c.classList.toggle('active', c.dataset.filter === name);
       });
-      resultInfo.textContent = 'Scan size: ' + data.width + ' × ' + data.height + ' px';
+      resultInfo.textContent = 'Scan size: ' + data.width + ' × ' + data.height + ' px';      
+      currentBlob = null;      
+      const myToken = ++blobToken;       
+      resultCanvas.toBlob(function(blob) {         
+        if (myToken !== blobToken) return;         
+        currentBlob = blob;         
+        resultInfo.textContent = 'Scan size: ' + data.width + ' × ' + data.height +           ' px · File size: ' + Math.round(blob.size / 1024) + ' KB';       }, 'image/jpeg', 0.9);
     }
 
     /* ---------- Buttons ---------- */
@@ -565,12 +588,46 @@
       stageWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
-    chips.forEach(function(chip) {
+        chips.forEach(function(chip) {
       chip.addEventListener('click', function() {
         if (!flatData) return;
         showFilter(chip.dataset.filter);
       });
     });
+
+    saveButton.addEventListener('click', function() {
+      if (!currentBlob) return;
+      const url = URL.createObjectURL(currentBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = makeFileName();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+    });
+
+    shareButton.addEventListener('click', async function() {
+      if (!currentBlob) return;
+      const file = new File([currentBlob], makeFileName(), { type: 'image/jpeg' });
+      try {
+        await navigator.share({ files: [file], title: 'Scanned document' });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          shareNote.textContent = 'Sharing did not work here. Use Save image instead.';
+        }
+      }
+    });
+
+    // Hide Share on browsers that can't share files
+    (function() {
+      try {
+        const test = new File(['x'], 't.jpg', { type: 'image/jpeg' });
+        if (navigator.canShare && navigator.canShare({ files: [test] })) return;
+      } catch (e) {}
+      shareButton.style.display = 'none';
+      shareNote.textContent = "This browser can't open the share menu, so use Save image.";
+    })();
   </script>
 </body>
 </html>
